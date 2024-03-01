@@ -14,7 +14,7 @@
 /* Create an empty queue */
 struct list_head *q_new()
 {
-    struct list_head *head = malloc(sizeof(struct list_head) + 1);
+    struct list_head *head = malloc(sizeof(struct list_head));
     if (!head) {
         printf("Fail to allocate space to an empty queue!\n");
         return NULL;
@@ -40,22 +40,30 @@ bool q_insert_head(struct list_head *head, char *s)
 {
     if (!head || !s)
         return false;
-    element_t *node = malloc(sizeof(element_t));
+    element_t *node = (element_t *) malloc(sizeof(element_t));
+    if (!node) {
+        return false;
+    }
     node->value = strdup(s);
     if (!node->value) {
         printf("Fail to allocate space to string!\n");
         free(node);
         return false;
     }
+    /*
     if (head->next == head) {
         element_t *first = list_first_entry(head->next, element_t, list);
+        INIT_LIST_HEAD(&node->list);
         list_add(&node->list, &first->list);
         return true;
     } else {
+        INIT_LIST_HEAD(&node->list);
         list_add(&node->list, head);
         return true;
-    }
-    return false;
+    }*/
+    INIT_LIST_HEAD(&node->list);
+    list_add(&node->list, head);
+    return true;
 }
 
 /* Insert an element at tail of queue */
@@ -63,22 +71,30 @@ bool q_insert_tail(struct list_head *head, char *s)
 {
     if (!head || !s)
         return false;
-    element_t *node = malloc(sizeof(element_t));
+    element_t *node = (element_t *) malloc(sizeof(element_t));
+    if (!node) {
+        return false;
+    }
     node->value = strdup(s);
     if (!node->value) {
         printf("Fail to allocate space to string!\n");
         free(node);
         return false;
     }
+    /*
     if (head->next == head) {
         element_t *last = list_last_entry(head->prev, element_t, list);
+        INIT_LIST_HEAD(&node->list);
         list_add_tail(&node->list, &last->list);
         return true;
     } else {
+        INIT_LIST_HEAD(&node->list);
         list_add_tail(&node->list, head);
         return true;
-    }
-    return false;
+    }*/
+    INIT_LIST_HEAD(&node->list);
+    list_add_tail(&node->list, head);
+    return true;
 }
 
 /* Remove an element from head of queue */
