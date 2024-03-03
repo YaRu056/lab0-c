@@ -219,16 +219,15 @@ void q_reverse(struct list_head *head)
     if (!head || list_empty(head) || list_is_singular(head)) {
         return;
     }
-    struct list_head *tmp = NULL;
-    struct list_head *cur = head;
+    struct list_head *cur = head->prev, *tmp = NULL;
     int size = q_size(head);
-    while (size >= 0) {
+    while (size > 0) {
         tmp = cur->prev;
-        cur->prev = cur->next;
-        cur->next = tmp;
-        cur = cur->prev;
+        list_move_tail(cur, head);
+        cur = tmp;
         size--;
     }
+
 }
 
 /* Reverse the nodes of the list k at a time */
