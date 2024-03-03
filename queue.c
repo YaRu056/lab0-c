@@ -43,13 +43,13 @@ bool q_insert_head(struct list_head *head, char *s)
     if (!node) {
         return false;
     }
+    INIT_LIST_HEAD(&node->list);
     node->value = strdup(s);
     if (!node->value) {
         // printf("Fail to allocate space to string!\n");
         free(node);
         return false;
     }
-    // INIT_LIST_HEAD(&node->list);
     list_add(&node->list, head);
     return true;
 }
@@ -63,13 +63,13 @@ bool q_insert_tail(struct list_head *head, char *s)
     if (!node) {
         return false;
     }
+    INIT_LIST_HEAD(&node->list);
     node->value = strdup(s);
     if (!node->value) {
         // printf("Fail to allocate space to string!\n");
         free(node);
         return false;
     }
-    // INIT_LIST_HEAD(&node->list);
     list_add_tail(&node->list, head);
     return true;
 }
@@ -81,7 +81,7 @@ element_t *q_remove_head(struct list_head *head, char *sp, size_t bufsize)
         return NULL;
     }
     element_t *node;
-    node = list_entry(head->next, element_t, list);
+    node = list_first_entry(head, element_t, list);
     list_del(&node->list);
     int len = strlen(node->value);
     if (sp) {
@@ -99,7 +99,7 @@ element_t *q_remove_tail(struct list_head *head, char *sp, size_t bufsize)
         return NULL;
     }
     element_t *node;
-    node = list_entry(head->prev, element_t, list);
+    node = list_last_entry(head, element_t, list);
     list_del(&node->list);
     int len = strlen(node->value);
     if (sp) {
@@ -261,44 +261,48 @@ void q_reverseK(struct list_head *head, int k)
     }
     list_splice_init(&newHead, head);
 }
-
+void mergesort(struct list_head *h1, struct list_head *h2)
+{
+    if (!h1 || !h2) {
+        return;
+    }
+    LIST_HEAD(newHead);
+    while (!list_empty(h1) && !list_empty(h2)) {
+        element_t *n_h1, *n_h2, *tmp;
+        n_h1 = list_first_entry(h1, element_t, list);
+        n_h2 = list_first_entry(h2, element_t, list);
+        tmp = strcmp(n_h1->value, n_h2->value) < 0 ? n_h1 : n_h2;
+        list_move_tail(&tmp->list, &newHead);
+    }
+    list_splice_tail_init(h1, &newHead);
+    list_splice_tail_init(h2, &newHead);
+    list_splice(&newHead, h1);
+    return;
+}
 /* Sort elements of queue in ascending/descending order */
 void q_sort(struct list_head *head, bool descend)
 {
     if (!head || list_empty(head) || list_is_singular(head)) {
         return;
     }
-    struct list_head *p = head->next, *q = p->next;
-    struct list_head *tmp;
-    int q_sz = q_size(head);
-    int i = 1;
-    while (i < q_sz) {
-        int j = i + 1;
-        element_t *n_p = list_entry(p, element_t, list);
-        element_t *n_q = list_entry(q, element_t, list);
-        while (j <= q_sz) {
-            n_q = list_entry(q, element_t, list);
-            if (strcmp(n_p->value, n_q->value) > 0 && !descend) {
-                // printf("change(<)\n");
-                n_swap(p, q);
-                tmp = q;
-                q = p;
-                p = tmp;
-                n_p = list_entry(p, element_t, list);
-            } else if (strcmp(n_p->value, n_q->value) < 0 && descend) {
-                // printf("change(>)\n");
-                n_swap(p, q);
-                tmp = q;
-                q = p;
-                p = tmp;
-                n_p = list_entry(p, element_t, list);
-            }
-            q = q->next;
-            ++j;
+    LIST_HEAD(tmp1);
+    LIST_HEAD(tmp2);
+    int s = q_size(head) / 2 - 1;
+    struct list_head *tail = NULL;
+    list_for_each (tail, head) {
+        if (s < 0) {
+            break;
         }
-        p = p->next;
-        q = p->next;
-        ++i;
+        s--;
+    }
+    list_cut_position(&tmp1, head, tail->prev);
+    list_cut_position(&tmp2, tail->prev, head->prev);
+    q_sort(&tmp1, descend);
+    q_sort(&tmp2, descend);
+    mergesort(&tmp1, &tmp2);
+    list_splice_init(&tmp1, head);
+    if (descend) {
+        q_reverse(head);
     }
     return;
 }
@@ -363,5 +367,22 @@ int q_merge(struct list_head *head, bool descend)
 {
     // head: header of chain
     //  https://leetcode.com/problems/merge-k-sorted-lists/
-    return 0;
+    if (!head || list_empty(head)) {
+        return 0;
+    } else if (list_is_singular(head)) {
+        return q_size(list_first_entry(head, queue_contex_t, chain)->q);
+    }
+    queue_contex_t *first = list_first_entry(head, queue_contex_t, chain);
+    queue_contex_t *cur = NULL, *safe = NULL;
+    list_for_each_entry_safe (cur, safe, head, chain) {
+        if (cur == first) {
+
+            continue;
+        }
+        list_splice_init(cur->q, first->q);
+        first->size += cur->size;
+        cur->size = 0;
+    }
+    q_sort(first->q, descend);
+    return first->size;
 }
