@@ -875,28 +875,28 @@ static bool do_merge(int argc, char *argv[])
     q_show(3);
     return ok && !error_check();
 }
-static bool do_shuffle(int argc, char *argv[])
-{
-    if (argc != 1) {
-        report(1, "%s takes no arguments", argv[0]);
-        return false;
-    }
+// static bool do_shuffle(int argc, char *argv[])
+// {
+//     if (argc != 1) {
+//         report(1, "%s takes no arguments", argv[0]);
+//         return false;
+//     }
 
-    if (!current || !current->q) {
-        report(3, "Warning: Calling shuffle on null queue");
-        return false;
-    }
-    error_check();
+//     if (!current || !current->q) {
+//         report(3, "Warning: Calling shuffle on null queue");
+//         return false;
+//     }
+//     error_check();
 
-    set_noallocate_mode(true);
-    if (exception_setup(true))
-        q_shuffle(current->q);
-    exception_cancel();
+//     set_noallocate_mode(true);
+//     if (exception_setup(true))
+//         q_shuffle(current->q);
+//     exception_cancel();
 
-    set_noallocate_mode(false);
-    q_show(3);
-    return !error_check();
-}
+//     set_noallocate_mode(false);
+//     q_show(3);
+//     return !error_check();
+// }
 static bool is_circular()
 {
     struct list_head *cur = current->q->next;
