@@ -82,6 +82,10 @@ element_t *q_remove_head(struct list_head *head, char *sp, size_t bufsize)
     }
     element_t *node;
     node = list_first_entry(head, element_t, list);
+    if (node == NULL) {
+        free(node);
+        return NULL;
+    }
     list_del(&node->list);
     int len = strlen(node->value);
     if (sp) {
@@ -100,6 +104,10 @@ element_t *q_remove_tail(struct list_head *head, char *sp, size_t bufsize)
     }
     element_t *node;
     node = list_last_entry(head, element_t, list);
+    if (node == NULL) {
+        free(node);
+        return NULL;
+    }
     list_del(&node->list);
     int len = strlen(node->value);
     if (sp) {
@@ -384,4 +392,37 @@ int q_merge(struct list_head *head, bool descend)
     }
     q_sort(first->q, descend);
     return first->size;
+}
+void q_shuffle(struct list_head *head)
+{
+    if (!head || list_empty(head)) {
+        return;
+    } else if (list_is_singular(head)) {
+        return;
+    }
+    int n = q_size(head);
+    for (int i = n - 1; i > 0; i--) {
+        // Generate a random index between 0 and i (inclusive)
+        int rand_index = rand() % (i + 1);
+        struct list_head *old = head, *new = NULL, *cur = NULL;
+        int s = 0;
+        list_for_each (cur, head) {
+            if (rand_index == i) {
+                if (s == i) {
+                    old = cur;
+                    new = cur;
+                    break;
+                }
+            } else {
+                if (s == rand_index) {
+                    new = cur;
+                } else if (s == i) {
+                    old = cur;
+                    break;
+                }
+            }
+            s++;
+        }
+        n_swap(old, new);
+    }
 }
