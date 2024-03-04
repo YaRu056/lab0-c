@@ -1074,7 +1074,7 @@ static void console_init()
                 "");
     ADD_COMMAND(reverseK, "Reverse the nodes of the queue 'K' at a time",
                 "[K]");
-    ADD_COMMAND(shuffle, "Reorder all nodes in a random manner", "");
+    // ADD_COMMAND(shuffle, "Reorder all nodes in a random manner", "");
     add_param("length", &string_length, "Maximum length of displayed string",
               NULL);
     add_param("malloc", &fail_probability, "Malloc failure probability percent",
