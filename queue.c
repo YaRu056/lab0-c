@@ -3,13 +3,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "list_sort.h"
 /* Notice: sometimes, Cppcheck would find the potential NULL pointer bugs,
  * but some of them cannot occur. You can suppress them by adding the
  * following line.
  *   cppcheck-suppress nullPointer
  */
 
+/*
+ * Using __builtin_constant_p(x) to ignore cases where the return
+ * value is always the same.  This idea is taken from a similar patch
+ * written by Daniel Walker.
+ */
 
+int swap_me = 0, swap_l = 0;
 /* Create an empty queue */
 struct list_head *q_new()
 {
@@ -268,7 +275,7 @@ void q_reverseK(struct list_head *head, int k)
     }
     list_splice_init(&newHead, head);
 }
-void mergesort(struct list_head *h1, struct list_head *h2)
+void mergesort(struct list_head *h1, struct list_head *h2, bool descend)
 {
     if (!h1 || !h2) {
         return;
@@ -278,7 +285,12 @@ void mergesort(struct list_head *h1, struct list_head *h2)
         element_t *n_h1, *n_h2, *tmp;
         n_h1 = list_first_entry(h1, element_t, list);
         n_h2 = list_first_entry(h2, element_t, list);
-        tmp = strcmp(n_h1->value, n_h2->value) < 0 ? n_h1 : n_h2;
+        // swap_me++;
+        if (!descend) {
+            tmp = strcmp(n_h1->value, n_h2->value) < 0 ? n_h1 : n_h2;
+        } else {
+            tmp = strcmp(n_h1->value, n_h2->value) < 0 ? n_h1 : n_h2;
+        }
         list_move_tail(&tmp->list, &newHead);
     }
     list_splice_tail_init(h1, &newHead);
@@ -292,6 +304,7 @@ void q_sort(struct list_head *head, bool descend)
     if (!head || list_empty(head) || list_is_singular(head)) {
         return;
     }
+    swap_me = 0;
     LIST_HEAD(tmp1);
     LIST_HEAD(tmp2);
     int s = q_size(head) / 2 - 1;
@@ -306,11 +319,9 @@ void q_sort(struct list_head *head, bool descend)
     list_cut_position(&tmp2, tail->prev, head->prev);
     q_sort(&tmp1, descend);
     q_sort(&tmp2, descend);
-    mergesort(&tmp1, &tmp2);
+    mergesort(&tmp1, &tmp2, descend);
     list_splice_init(&tmp1, head);
-    if (descend) {
-        q_reverse(head);
-    }
+    // printf("My sort swap times: %d \n",swap_me);
     return;
 }
 
@@ -425,4 +436,205 @@ void q_shuffle(struct list_head *head)
         }
         n_swap(old, new);
     }
+}
+static struct list_head *merge(void *priv,
+                               struct list_head *a,
+                               struct list_head *b,
+                               bool descend)
+
+{
+    if (list_empty(a)) {
+        return NULL;
+    }
+    if (list_empty(b)) {
+        return NULL;
+    }
+    struct list_head **tail = &head;
+    element_t *n_h1, *n_h2;
+    if (!descend) {
+        for (;;) {
+            /* if equal, take 'a' -- important for sort stability */
+            n_h1 = list_entry(a, element_t, list);
+            n_h2 = list_entry(b, element_t, list);
+            // swap_l++;
+            if (strcmp(n_h1->value, n_h2->value) <= 0) {
+                // a<=b
+                *tail = a;
+                tail = &a->next;
+                a = a->next;
+                if (!a) {
+                    *tail = b;
+                    break;
+                }
+            } else {
+                // a>b
+                *tail = b;
+                tail = &b->next;
+                b = b->next;
+                if (!b) {
+                    // b list no element
+                    *tail = a;
+                    break;
+                }
+            }
+        }
+    } else {
+        for (;;) {
+            /* if equal, take 'a' -- important for sort stability */
+            n_h1 = list_entry(a, element_t, list);
+            n_h2 = list_entry(b, element_t, list);
+            // swap_l++;
+            if (strcmp(n_h1->value, n_h2->value) <= 0) {
+                // a<=b
+                *tail = b;
+                tail = &b->next;
+                b = b->next;
+                if (!b) {
+                    // b list no element
+                    *tail = a;
+                    break;
+                }
+            } else {
+                // a>b
+                *tail = a;
+                tail = &a->next;
+                a = a->next;
+                if (!a) {
+                    *tail = b;
+                    break;
+                }
+            }
+        }
+    }
+    return head;
+}
+static void merge_final(void *priv,
+                        struct list_head *head,
+                        struct list_head *a,
+                        struct list_head *b,
+                        bool descend)
+{
+    if (!a || list_empty(a)) {
+        return;
+    }
+    if (!b || list_empty(b)) {
+        return;
+    }
+    struct list_head *tail = head;
+    element_t *n_h1, *n_h2;
+    if (!descend) {
+        for (;;) {
+            /* if equal, take 'a' -- important for sort stability */
+            n_h1 = list_entry(a, element_t, list);
+            n_h2 = list_entry(b, element_t, list);
+            // swap_l++;
+            if (strcmp(n_h1->value, n_h2->value) <= 0) {
+                tail->next = a;
+                a->prev = tail;
+                tail = a;
+                a = a->next;
+                if (!a)
+                    break;
+            } else {
+                tail->next = b;
+                b->prev = tail;
+                tail = b;
+                b = b->next;
+                if (!b) {
+                    b = a;
+                    break;
+                }
+            }
+        }
+    } else {
+        for (;;) {
+            /* if equal, take 'a' -- important for sort stability */
+            n_h1 = list_entry(a, element_t, list);
+            n_h2 = list_entry(b, element_t, list);
+            // swap_l++;
+            if (strcmp(n_h1->value, n_h2->value) <= 0) {
+                tail->next = b;
+                b->prev = tail;
+                tail = b;
+                b = b->next;
+                if (!b) {
+                    b = a;
+                    break;
+                }
+            } else {
+                tail->next = a;
+                a->prev = tail;
+                tail = a;
+                a = a->next;
+                if (!a)
+                    break;
+            }
+        }
+
+    }
+    /* Finish linking remainder of list b on to tail */
+    tail->next = b;
+    do {
+        b->prev = tail;
+        tail = b;
+        b = b->next;
+    } while (b);
+
+    /* And the final links to make a circular doubly-linked list */
+    tail->next = head;
+    head->prev = tail;
+}
+
+void list_sort(void *priv, struct list_head *head, bool descend)
+{
+
+    swap_l = 0;
+    int s = q_size(head) - 1;
+    if (list_empty(head)) {
+        return;
+    } else if (list_is_singular(head)) {
+        return;
+    }
+    struct list_head *list = head->next, *pending = NULL;
+    size_t count = 0; /* Count of pending */
+    /* Convert to a null-terminated singly-linked list. */
+    head->prev->next = NULL;
+    do {
+        size_t bits;
+        struct list_head **tail = &pending;
+        /* Find the least-significant clear bit in count */
+        for (bits = count; bits & 1; bits >>= 1) {
+            tail = &(*tail)->prev;
+        }
+        /* Do the indicated merge */
+        if (bits) {
+            struct list_head *a = *tail, *b = a->prev;
+
+            a = merge(priv, b, a, descend);
+            /* Install the merged result in place of the inputs */
+            a->prev = b->prev;
+            *tail = a;
+        }
+
+        /* Move one element from input list to pending */
+        list->prev = pending;
+        pending = list;
+        list = list->next;
+        pending->next = NULL;
+        count++;
+    } while (s--);
+
+    /* End of input; merge together all the pending lists. */
+    list = pending;
+    pending = pending->prev;
+    for (;;) {
+        struct list_head *next = pending->prev;
+        if (!next)
+            break;
+        list = merge(priv, pending, list, descend);
+        pending = next;
+    }
+    /* The final merge, rebuilding prev links */
+    merge_final(priv, head, pending, list, descend);
+    // printf("Linux sort swap times: %d\n",swap_l);
 }

@@ -21,6 +21,7 @@
 
 #include "dudect/fixture.h"
 #include "list.h"
+#include "list_sort.h"
 #include "random.h"
 
 /* Shannon entropy */
@@ -804,6 +805,68 @@ static bool do_reverseK(int argc, char *argv[])
     q_show(3);
     return !error_check();
 }
+char *str_cmp(void *priv, const struct list_head *a, const struct list_head *b)
+{
+    element_t *na, *nb, *tmp;
+
+    na = list_first_entry(a, element_t, list);
+    nb = list_first_entry(b, element_t, list);
+    tmp = strcmp(na->value, na->value) < 0 ? na : nb;
+    // if (tmp == na)
+    // 	return -1;
+    // if (tmp == nb)
+    // 	return 1;
+    return tmp->value;
+}
+bool do_listSort(int argc, char *argv[])
+{
+    if (argc != 1) {
+        report(1, "%s takes no arguments", argv[0]);
+        return false;
+    }
+
+    int cnt = 0;
+    if (!current || !current->q)
+        report(3, "Warning: Calling sort on null queue");
+    else
+        cnt = q_size(current->q);
+    error_check();
+
+    if (cnt < 2)
+        report(3, "Warning: Calling sort on single node");
+    error_check();
+
+    set_noallocate_mode(true);
+    if (current && exception_setup(true))
+        list_sort(NULL, current->q, descend);
+    exception_cancel();
+    set_noallocate_mode(false);
+
+    bool ok = true;
+    if (current && current->size) {
+        for (struct list_head *cur_l = current->q->next;
+             cur_l != current->q && --cnt; cur_l = cur_l->next) {
+            /* Ensure each element in ascending/descending order */
+            element_t *item, *next_item;
+            item = list_entry(cur_l, element_t, list);
+            next_item = list_entry(cur_l->next, element_t, list);
+            if (!descend && strcmp(item->value, next_item->value) > 0) {
+                report(1, "ERROR: Not sorted in ascending order");
+                ok = false;
+                break;
+            }
+
+            if (descend && strcmp(item->value, next_item->value) < 0) {
+                report(1, "ERROR: Not sorted in descending order");
+                ok = false;
+                break;
+            }
+        }
+    }
+
+    q_show(3);
+    return ok && !error_check();
+}
 
 static bool do_merge(int argc, char *argv[])
 {
@@ -1074,6 +1137,7 @@ static void console_init()
                 "");
     ADD_COMMAND(reverseK, "Reverse the nodes of the queue 'K' at a time",
                 "[K]");
+    ADD_COMMAND(listSort, "Sort list", "");
     // ADD_COMMAND(shuffle, "Reorder all nodes in a random manner", "");
     add_param("length", &string_length, "Maximum length of displayed string",
               NULL);
